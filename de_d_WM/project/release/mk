@@ -1,0 +1,102 @@
+#!/bin/bash
+
+mkdir -p out
+mkdir -p update/nand1-1
+mkdir -p update/nand1-2
+
+#小写转大写
+typeset -u type
+typeset -u device_type
+
+cd ../
+device_type="\
+BZ \
+FL \
+WM \
+"
+
+project_dir=${PWD##*/}
+cd ../
+#从文件夹名获得设备类型名
+root_dir_name=${PWD##*/}
+type=${root_dir_name%%_*}
+in_out=${root_dir_name##*_}
+debug_type=-DTC3000_$type
+
+cd $project_dir/release
+
+if [ "$debug_type" = "-DTC3000_Z1" ]; then
+	debug_type+=\ -DTC3000_Q1
+fi
+if [ "$debug_type" = "-DTC3000_R1" ]; then
+	debug_type+=\ -DTC3000_X1
+fi
+if [ "$debug_type" = "-DTC3000_KTIC" ]; then
+	debug_type+=\ -DTC3000_KT
+fi
+if [ "$debug_type" = "-DTC3000_18E1" ]; then
+	debug_type+=\ -DTC3000_T1
+fi
+if [ "$debug_type" = "-DTC3000_X1HD" ]; then
+	debug_type+=\ -DTC3000_X1
+fi
+if [ "$debug_type" = "-DTC3000_Q1HD" ]; then
+	debug_type+=\ -DTC3000_Q1
+fi
+
+
+
+for device in $device_type ; do
+	echo "  "
+	echo "--------------- $type :configure release source files finished----------------"
+	echo "Device_type : $device"
+	echo "TYPE = ${device}" > evn.mk
+	echo "CFLAGS += ${debug_type} -DTC3000_${device}" >> evn.mk
+
+	if [ "$in_out" == mh ]; then
+		echo '
+INC_DIR += $(MAKEROOT)/src/include
+INC_DIR += $(MAKEROOT)/src' >> evn.mk
+		echo 'SRC = $(wildcard ${SRC_DIR}/*.c)' >> evn.mk
+	else
+		echo '
+INC_DIR += $(MAKEROOT)/src/application
+INC_DIR += $(MAKEROOT)/src/drivers
+INC_DIR += $(MAKEROOT)/src/gui
+INC_DIR += $(MAKEROOT)/src/net' >> evn.mk
+		echo '
+SRC = $(wildcard ${SRC_DIR}/application/*.c)
+SRC += $(wildcard ${SRC_DIR}/gui/*.c)
+SRC += $(wildcard ${SRC_DIR}/drivers/*.c)
+SRC += $(wildcard ${SRC_DIR}/net/*.c)' >> evn.mk
+	fi
+
+	if [ -d obj ]; then
+		echo "rm -rf obj"
+		rm -rf obj
+	fi
+	mkdir -p obj_$device
+	make
+	if [ "$?" == 0 ]; then
+		cp -u out/v_$device update/nand1-2
+		cp -u out/v_$device ../nand_bak/nand1-2		
+		echo "Release build finished!"
+	else
+		echo "make error!"
+	fi
+done
+
+echo "  "
+echo "tar czf Update.tar.gz update"
+if [ -e update/nand1-2/v ]; then
+	echo "rm update/nand1-2/v"
+	rm update/nand1-2/v
+fi
+if [ -e out/v ]; then
+	echo "rm out/v"
+	rm out/v
+fi
+tar czf Update.tar.gz update/
+mv Update.tar.gz Update.cab
+mv Update.cab out/
+

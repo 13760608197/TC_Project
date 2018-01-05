@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ ! -e "/tmp/v_WM" ] ;then
+	echo "mounting ..."
+	mount -t nfs -o nolock 172.16.50.12:/nfsdir /tmp
+fi
+
+if [ -e "/tmp/v_WM" ] ;then
+	echo "cp /tmp/v_WM ./"
+	cp -p /tmp/v_WM ./v
+else
+	echo "/tmp/v is not exist!"
+fi
+
+./v
+
